@@ -1,0 +1,16 @@
+---
+# defaults file 
+security_group_name: "" # Example AWS-GOLD-AMI-SG
+vpc_id: "" # Your VPC
+cidr_ip: "" # Public IP outgoing the ALB for AWX server
+rule_desc: "allow ssh"
+ec2_name: "" # Name of temp EC2 that the AMI is created from. Example AWS-GOLD-AMI-EC2
+key_name: "" # SSH KEY .pem
+aws_region: "" # Define your region
+instance_type: "" # Instance type for temp EC2.
+#image_id: "" # Deprecated in favor of search by AMI name
+vpc_subnet_id: "" #Public subnet for VPC
+count: "1" # Default
+ami_name: "" # Desired name of GOLD image or exisiting ami gold image name. Example AWS-GOLD-AMI-LATEST
+
+

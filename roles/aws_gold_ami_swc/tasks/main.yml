@@ -1,0 +1,107 @@
+---
+- name: Create a Security Group
+  amazon.aws.ec2_security_group:
+    name: "{{ security_group_name }}"
+    description: "Ansible_EC2_Security_Group"
+    vpc_id: "{{ vpc_id }}"
+    aws_region: "{{ aws_region }}"
+    rules:
+      - proto: tcp
+        ports:
+        - 22
+        cidr_ip: "{{ cidr_ip }}" #76.182.164.220/32
+        rule_desc: "{{ rule_desc }}" #"allow ssh for CAS"
+  register: security_group
+
+- ansible.builtin.debug:
+    var: security_group.group_id
+
+- name: Gather facts about ami_name defined in defaults.yml to get image_id of current ami
+  amazon.aws.ec2_ami_info:
+    aws_region: "{{ aws_region }}"
+    filters:
+      name: "{{ ami_name }}"
+  register: ami_find1
+
+- ansible.builtin.debug:
+    var: ami_find1.images[0].image_id
+
+- name: Launch EC2 instance with user_data.sh
+  amazon.aws.ec2_instance:
+    name: "{{ ec2_name }}"      
+    key_name: "{{ key_name }}"
+    instance_type: "{{ instance_type }}"
+    image_id: "{{ ami_find1.images[0].image_id }}"
+    vpc_subnet_id: "{{ vpc_subnet_id }}"
+    security_group: "{{ security_group.group_id }}"
+    iam_instance_profile: "cdm2-ec2RoleForSSM"
+    count: "{{ count }}"
+    aws_region: "{{ aws_region }}"
+    network:
+      assign_public_ip: true
+    tags:
+      Environment: PreStaging
+    user_data: "{{ lookup('file', 'user_data.sh') }}"
+    wait: yes
+  register: ec2_instance
+
+- ansible.builtin.debug:
+     var: ec2_instance.instances[0].public_ip_address
+
+- ansible.builtin.debug:
+    var: ec2_instance.instances[0].instance_id
+
+- name: Wait for SSH/SSM to become available
+  wait_for:
+    host: "{{ ec2_instance.instances[0].public_ip_address }}"
+    port: 22
+    delay: 30
+    timeout: 600
+
+- name: Sleep for 500 seconds to allow dnf upgrade # Update here if using apt and update files/user_data.sh
+  ansible.builtin.wait_for:
+    timeout: 500
+  delegate_to: localhost
+
+- name: Gather facts about AMI Name
+  amazon.aws.ec2_ami_info:
+    aws_region: "{{ aws_region }}"      
+    filters:
+      name: "{{ ami_name }}"
+  register: ami_find2
+
+- ansible.builtin.debug:
+        var: ami_find2.images[0].image_id
+  
+- name: Deregister old ami_name defined in defaults.yml 
+  amazon.aws.ec2_ami:
+    aws_region: "{{ aws_region }}"
+    image_id: "{{ ami_find2.images[0].image_id }}"
+    delete_snapshot: False
+    state: absent
+  when:
+    - ami_find2.images[0] is defined  # Check if ami_find variable is defined
+    - ami_find2.images[0] | length > 0  # Check if there are image results 
+    - ami_find2.images[0].state == 'available'  # Check if the state of the first AMI result is 'available'
+
+- name: Create latest AMI
+  amazon.aws.ec2_ami:
+    instance_id: "{{ ec2_instance.instances[0].instance_id }}"
+    wait: true
+    name: "{{ ami_name }}"
+    aws_region: "{{ aws_region }}"
+    tags:
+      Name: "{{ ami_name }}"
+  register: ami_info
+  when: ec2_instance.changed
+
+- ansible.builtin.debug:
+    var: ami_info.image_id
+
+- name: Terminate EC2 instance
+  amazon.aws.ec2_instance:
+    state: terminated
+    aws_region: "{{ aws_region }}"
+    instance_ids: "{{ ec2_instance.instances[0].instance_id }}"
+  when: ec2_instance.changed
+ 

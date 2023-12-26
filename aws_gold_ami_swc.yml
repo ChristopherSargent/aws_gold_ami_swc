@@ -1,0 +1,9 @@
+---
+- name: Deploy EC2 Instance, dnf update and create aws_gold_ami_swc AMI
+  hosts: localhost
+  gather_facts: no
+  become_user: root
+  tasks:
+    - include_role:
+        name: aws_gold_ami_swc
+
