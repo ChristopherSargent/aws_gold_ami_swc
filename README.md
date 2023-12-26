@@ -1,5 +1,5 @@
 ![alt text](swclogo.jpg)
-* This repository contains ansible role to deploy and EC2 from AMI, perform dnf upgrade and then create a new AMI-Latest and finally delete the deployed EC2 instance for an optimal GOLD AMI. For any additional details or inquiries, please contact us at csargent-ctr@ecstech.com.
+* This repository contains ansible role to deploy and EC2 from an AMI, perform dnf upgrade via the user_data.sh script, delete the original gold ami by searching for it by name, create a new AMI-Latest and finally delete the deployed EC2 instance for an optimal GOLD AMI. For any additional details or inquiries, please contact me at christopher.sargent@sargentwalker.io.
 
 * Ansible modules
 # [amazon.aws.ec2_ami](https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_ami_module.html)
@@ -8,7 +8,6 @@
 # [amazon.aws.ec2_security_group module](https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_security_group_module.html)
 
 # This project is run from PS-AWX
-* Note that AMIs have a script placed in /root/scripts/user_data/user_data.sh which performs the update
 * You can tail -f /root/scripts/user_data/user_data.log to verify on the EC2 deployed
 1. https://awxfqdn.com
 
